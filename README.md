@@ -1,80 +1,12 @@
 # Muse Gadget on ESP32-S3 Bread Compact WiFi LCD
 
+[English](#english) · [简体中文](#简体中文)
+
 An unofficial board port of the [Muse Gadget ESP32 SDK](https://github.com/facebookincubator/muse-gadget-sdk) for the ESP32-S3-N16R8 development kit bundled with the Bread Compact WiFi LCD expansion board.
 
-[简体中文](#简体中文) · [English](#english)
+![Illustrative rendering of the ESP32-S3-N16R8 with the Bread Compact WiFi LCD board](docs/images/esp32-s3-bread-compact-render.jpg)
 
-## 简体中文
-
-### 项目说明
-
-本仓库基于 Meta 的 [Muse Gadget SDK](https://github.com/facebookincubator/muse-gadget-sdk)，为 **ESP32-S3-N16R8 + Bread Compact WiFi LCD** 增加板级支持，方便复用屏幕、扬声器、麦克风和 BOOT 按键。
-
-当前适配依据这块套件的实际硬件和 `xiaozhi-esp32` 的 [Bread Compact 引脚定义](https://github.com/78/xiaozhi-esp32/blob/main/main/boards/bread-compact-wifi-lcd/config.h)。已在一块 ESP32-S3-N16R8（16 MB Flash、8 MB PSRAM）上构建、刷写并运行；屏幕和扬声器已确认可用。其他批次的扩展板可能有不同接线，请先核对引脚。
-
-这是社区设备配置，配对流程使用 Muse 的社区设备模式，不包含制造商 eFuse 身份证明。此仓库提供源代码和可复现的构建方式，不提供预编译固件：每位使用者都应在本机填写自己的 Muse SDK token 和网络凭据后编译。
-
-### 硬件
-
-- ESP32-S3-N16R8：16 MB Flash、8 MB Octal PSRAM
-- Bread Compact WiFi LCD 扩展板：ST7789，240 × 320 屏幕
-- 板载音频编解码器、扬声器、麦克风和 BOOT 按键
-- CH340C USB 转串口
-
-### 环境准备
-
-- macOS 或 Linux
-- Espressif ESP-IDF **v6.0.1**，并已加载 `export.sh`，使 `idf.py` 可用
-- USB 数据线；刷写时使用板上的 CH340C 串口
-- Muse 账户中的 SDK token：`gadgets.muse.ai → Account → SDK tokens`
-
-### 配置、构建和刷写
-
-在仓库的 `esp32` 目录配置板型和本机凭据：
-
-```sh
-cd muse-esp32-bread-compact/esp32
-idf.py -B build-muse-bread-compact-wifi-lcd \
-  -DIDF_TARGET=esp32s3 \
-  -DSDKCONFIG=build-muse-bread-compact-wifi-lcd/sdkconfig \
-  -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;devices/sdkconfig.muse;devices/sdkconfig.muse-bread-compact-wifi-lcd" \
-  menuconfig
-```
-
-在 **ESP32 Device SDK** 菜单中填写自己的 **Muse Gadgets SDK token**。通常可通过 Muse App 配置 Wi‑Fi；如需固件启动后直接连接指定热点，也可在此设置 **WiFi SSID override** 和 **WiFi password override**。这些值只应保存在本机生成的 `build-muse-bread-compact-wifi-lcd/sdkconfig` 中，该目录由 Git 忽略。含有这些配置的固件也包含凭据，请勿上传或转发 `.bin`、`.elf` 或整个 `build-*` 目录。
-
-保存配置后构建并刷写：
-
-```sh
-tools/muse/board.sh build bread-lcd
-tools/muse/board.sh flash bread-lcd /dev/cu.usbserial-110
-```
-
-把串口路径替换为本机识别到的 CH340C 端口。macOS 可用 `ls /dev/cu.usb*` 查看；Linux 常见路径为 `/dev/ttyUSB0` 或 `/dev/ttyACM0`。如果自动下载模式没有启动，按住 BOOT，轻按 RESET，再松开 BOOT，然后重新刷写。
-
-普通 `flash` 会写入引导程序、分区表和应用，并保留 NVS 中已有的配对数据；不要使用 `erase-flash`，除非确实要清除配对和网络配置。
-
-### 首次配对
-
-1. 在 Muse App 的 **Settings → Devices** 中启用 **Developer mode**。
-2. 选择 **Add Device**，连接列表中应出现 `MuseGadget-XXXXXX`。
-3. 按设备屏幕提示短按 BOOT，确认配对。
-4. 按 App 提示完成账户和 Wi‑Fi 设置。
-
-本板 BOOT 键也用于语音交互；只在设备出现配对确认提示时短按确认。
-
-### 常见问题
-
-- **App 看得到设备但连接失败**：保持设备供电并靠近手机，退出后重开 Muse App，再尝试一次。不要连续重复提交 Wi‑Fi 密码。若仍失败，串口日志可帮助区分 BLE 连接、Wi‑Fi 认证和 Muse 服务连接阶段。
-- **Wi‑Fi 认证失败**：先确认热点开启，使用 2.4 GHz WPA2 网络，并核对 SSID 和密码。部分路由器的 WPA3-only 模式、访客隔离或 MAC 白名单会阻止设备接入。
-- **连接后很快掉线**：`main/muse_glue.c` 包含对编译期 Wi‑Fi 覆盖的同步处理，避免 Muse 网络管理器把该网络误判为“已忘记”而断开。
-- **屏幕、音频接线不同**：先检查 `components/muse/boards/board_bread_compact_wifi_lcd.c` 中的 GPIO 和音频配置；不同版本扩展板不要盲目照搬。
-
-### 上游来源与许可证
-
-本项目基于 [facebookincubator/muse-gadget-sdk](https://github.com/facebookincubator/muse-gadget-sdk) 的 ESP32 源码快照（基础提交 [`b1a3822`](https://github.com/facebookincubator/muse-gadget-sdk/commit/b1a3822)），并增加 Bread Compact 板级适配和配套工具改动。上游代码采用 **Apache License 2.0**，本项目保留其许可证和原始版权声明。由于仓库包含上游代码，不能把整个派生项目简单改标为 MIT。
-
-上游源码附带的 `esp32/dev_signing_key.pem` 是公开共享的开发测试密钥，只用于开发构建，不构成生产安全边界。正式产品请使用自己的签名密钥，并建立独立的安全启动和密钥管理流程。
+*Illustrative rendering, not a wiring diagram. A USB-C cable powers the board; the red-and-black lead connects the speaker.*
 
 ## English
 
@@ -88,10 +20,15 @@ This is a community-device configuration. Pairing uses Muse's community-device m
 
 ### Hardware
 
-- ESP32-S3-N16R8: 16 MB flash and 8 MB Octal PSRAM
-- Bread Compact WiFi LCD expansion board: ST7789, 240 × 320 display
-- On-board audio codec, speaker, microphone, and BOOT button
-- CH340C USB-to-UART bridge
+The tested kit is sold as an **ESP32-S3 smart kit**. Its listed parts and the firmware profile used here are:
+
+- **MCU development board:** ESP32-S3-N16R8 (16 MB flash, 8 MB Octal PSRAM)
+- **Expansion board:** S3 Smart Expansion Board, with the audio amplifier module pre-soldered; firmware profile: `bread-compact-wifi-lcd`
+- **Display:** 2.0-inch ST7789 TFT, 240 × 320 pixels
+- **Audio:** included 3 W speaker, on-board audio codec/amplifier, and microphone
+- **USB serial:** CH340C; the board also exposes a separate ESP32-S3 USB-OTG port
+
+The listing name describes a kit rather than a verified manufacturer or board SKU. Check the display controller, pinout, and audio wiring against your own board revision before reusing this profile.
 
 ### Requirements
 
@@ -147,3 +84,80 @@ On this board, BOOT is also used for voice interaction. Press it briefly for pai
 This project is based on the ESP32 source snapshot from [facebookincubator/muse-gadget-sdk](https://github.com/facebookincubator/muse-gadget-sdk), at base commit [`b1a3822`](https://github.com/facebookincubator/muse-gadget-sdk/commit/b1a3822), with the Bread Compact board port and supporting tool changes. The upstream code is licensed under the **Apache License 2.0**; this repository retains that license and the original copyright notices. Because the repository contains upstream code, the complete derivative project cannot simply be relicensed as MIT.
 
 The upstream `esp32/dev_signing_key.pem` is a publicly shared development/test key. It is for development builds only and is not a production security boundary. Use your own signing key and a separate secure-boot and key-management process for production products.
+
+## 简体中文
+
+### 项目说明
+
+本仓库基于 Meta 的 [Muse Gadget SDK](https://github.com/facebookincubator/muse-gadget-sdk)，为 **ESP32-S3-N16R8 + Bread Compact WiFi LCD** 增加板级支持，方便复用屏幕、扬声器、麦克风和 BOOT 按键。
+
+当前适配依据这块套件的实际硬件和 `xiaozhi-esp32` 的 [Bread Compact 引脚定义](https://github.com/78/xiaozhi-esp32/blob/main/main/boards/bread-compact-wifi-lcd/config.h)。已在一块 ESP32-S3-N16R8（16 MB Flash、8 MB PSRAM）上构建、刷写并运行；屏幕和扬声器已确认可用。其他批次的扩展板可能有不同接线，请先核对引脚。
+
+这是社区设备配置，配对流程使用 Muse 的社区设备模式，不包含制造商 eFuse 身份证明。此仓库提供源代码和可复现的构建方式，不提供预编译固件：每位使用者都应在本机填写自己的 Muse SDK token 和网络凭据后编译。
+
+### 硬件
+
+实测套件商品名称为 **ESP32-S3 智能套件**，商品清单与本项目使用的固件板型如下：
+
+- **主控开发板：** ESP32-S3-N16R8（16 MB Flash、8 MB Octal PSRAM）
+- **扩展板：** S3 智能扩展板，音频功放模块已焊接；固件配置名为 `bread-compact-wifi-lcd`
+- **屏幕：** 2.0 英寸 ST7789 TFT，240 × 320
+- **音频：** 套件附带 3 W 扬声器，板载音频编解码器/功放和麦克风
+- **USB 转串口：** CH340C；板上另有 ESP32-S3 USB-OTG 接口
+
+商品名称描述的是套件，不是已核实的厂商或开发板 SKU。复用此配置前，请先核对手头板子的屏幕驱动、引脚和音频接线。
+
+### 环境准备
+
+- macOS 或 Linux
+- Espressif ESP-IDF **v6.0.1**，并已加载 `export.sh`，使 `idf.py` 可用
+- USB 数据线；刷写时使用板上的 CH340C 串口
+- Muse 账户中的 SDK token：`gadgets.muse.ai → Account → SDK tokens`
+
+### 配置、构建和刷写
+
+在仓库的 `esp32` 目录配置板型和本机凭据：
+
+```sh
+cd muse-esp32-bread-compact/esp32
+idf.py -B build-muse-bread-compact-wifi-lcd \
+  -DIDF_TARGET=esp32s3 \
+  -DSDKCONFIG=build-muse-bread-compact-wifi-lcd/sdkconfig \
+  -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;devices/sdkconfig.muse;devices/sdkconfig.muse-bread-compact-wifi-lcd" \
+  menuconfig
+```
+
+在 **ESP32 Device SDK** 菜单中填写自己的 **Muse Gadgets SDK token**。通常可通过 Muse App 配置 Wi‑Fi；如需固件启动后直接连接指定热点，也可在此设置 **WiFi SSID override** 和 **WiFi password override**。这些值只应保存在本机生成的 `build-muse-bread-compact-wifi-lcd/sdkconfig` 中，该目录由 Git 忽略。含有这些配置的固件也包含凭据，请勿上传或转发 `.bin`、`.elf` 或整个 `build-*` 目录。
+
+保存配置后构建并刷写：
+
+```sh
+tools/muse/board.sh build bread-lcd
+tools/muse/board.sh flash bread-lcd /dev/cu.usbserial-110
+```
+
+把串口路径替换为本机识别到的 CH340C 端口。macOS 可用 `ls /dev/cu.usb*` 查看；Linux 常见路径为 `/dev/ttyUSB0` 或 `/dev/ttyACM0`。如果自动下载模式没有启动，按住 BOOT，轻按 RESET，再松开 BOOT，然后重新刷写。
+
+普通 `flash` 会写入引导程序、分区表和应用，并保留 NVS 中已有的配对数据；不要使用 `erase-flash`，除非确实要清除配对和网络配置。
+
+### 首次配对
+
+1. 在 Muse App 的 **Settings → Devices** 中启用 **Developer mode**。
+2. 选择 **Add Device**，连接列表中应出现 `MuseGadget-XXXXXX`。
+3. 按设备屏幕提示短按 BOOT，确认配对。
+4. 按 App 提示完成账户和 Wi‑Fi 设置。
+
+本板 BOOT 键也用于语音交互；只在设备出现配对确认提示时短按确认。
+
+### 常见问题
+
+- **App 看得到设备但连接失败**：保持设备供电并靠近手机，退出后重开 Muse App，再尝试一次。不要连续重复提交 Wi‑Fi 密码。若仍失败，串口日志可帮助区分 BLE 连接、Wi‑Fi 认证和 Muse 服务连接阶段。
+- **Wi‑Fi 认证失败**：先确认热点开启，使用 2.4 GHz WPA2 网络，并核对 SSID 和密码。部分路由器的 WPA3-only 模式、访客隔离或 MAC 白名单会阻止设备接入。
+- **连接后很快掉线**：`main/muse_glue.c` 包含对编译期 Wi‑Fi 覆盖的同步处理，避免 Muse 网络管理器把该网络误判为“已忘记”而断开。
+- **屏幕、音频接线不同**：先检查 `components/muse/boards/board_bread_compact_wifi_lcd.c` 中的 GPIO 和音频配置；不同版本扩展板不要盲目照搬。
+
+### 上游来源与许可证
+
+本项目基于 [facebookincubator/muse-gadget-sdk](https://github.com/facebookincubator/muse-gadget-sdk) 的 ESP32 源码快照（基础提交 [`b1a3822`](https://github.com/facebookincubator/muse-gadget-sdk/commit/b1a3822)），并增加 Bread Compact 板级适配和配套工具改动。上游代码采用 **Apache License 2.0**，本项目保留其许可证和原始版权声明。由于仓库包含上游代码，不能把整个派生项目简单改标为 MIT。
+
+上游源码附带的 `esp32/dev_signing_key.pem` 是公开共享的开发测试密钥，只用于开发构建，不构成生产安全边界。正式产品请使用自己的签名密钥，并建立独立的安全启动和密钥管理流程。
